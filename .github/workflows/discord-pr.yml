@@ -4,17 +4,64 @@ on:
   pull_request:
     types:
       - opened
+      - reopened
+  workflow_dispatch:
+
+permissions:
+  pull-requests: read
 
 jobs:
   notify:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
       - name: Send Discord Message
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          curl -H "Content-Type: application/json" \
-          -X POST \
-          -d "{
-            \"content\":\"🚀 Novo Pull Request\n\n📦 Projeto: ${{ github.repository }}\n👤 Autor: ${{ github.actor }}\n🔗 ${{ github.event.pull_request.html_url }}\n\n👀 Precisa de aprovação\"
-          }" \
-          ${{ https://discord.com/api/webhooks/1518689436978905118/HqpIrA6FoYtdIBjgNf-TdJYlGE20zC2aKlGhZWh92bIWqN5LXrxMqG4mXP4v_6l54hDk }}
+          jq -n \
+            --arg title "🚀 Novo Pull Request #${{ github.event.pull_request.number }}" \
+            --arg url "${{ github.event.pull_request.html_url }}" \
+            --arg pr_title "${{ github.event.pull_request.title }}" \
+            --arg repo "${{ github.repository }}" \
+            --arg author "${{ github.event.pull_request.user.login }}" \
+            '{
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: $pr_title,
+                color: 5814783,
+                fields: [
+                  {name: "Projeto", value: $repo, inline: true},
+                  {name: "Autor", value: $author, inline: true}
+                ],
+                footer: {text: "Precisa de aprovação 👀"}
+              }]
+            }' | curl -sf -H "Content-Type: application/json" -X POST -d @- "$DISCORD_WEBHOOK"
+
+  list-open-prs:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: List open PRs on Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRS=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&per_page=20")
+
+          COUNT=$(echo "$PRS" | jq 'length')
+
+          if [ "$COUNT" -eq 0 ]; then
+            CONTENT="✅ Nenhum PR aberto no momento em **${{ github.repository }}**."
+          else
+            CONTENT="📋 **PRs abertos ($COUNT)** em **${{ github.repository }}**:\n\n"
+            CONTENT+=$(echo "$PRS" | jq -r '.[] | "• [#\(.number)] \(.title)\n  👤 \(.user.login) → \(.html_url)\n"')
+          fi
+
+          jq -n --arg content "$CONTENT" '{content: $content}' \
+            | curl -sf -H "Content-Type: application/json" -X POST -d @- "$DISCORD_WEBHOOK"
