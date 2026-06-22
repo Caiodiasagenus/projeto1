@@ -20,6 +20,11 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::error::Secret DISCORD_WEBHOOK não configurado. Vá em Settings → Secrets and variables → Actions e crie o secret com a URL do webhook (sem aspas)."
+            exit 1
+          fi
+
           jq -n \
             --arg title "🚀 Novo Pull Request #${{ github.event.pull_request.number }}" \
             --arg url "${{ github.event.pull_request.html_url }}" \
@@ -50,6 +55,11 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::error::Secret DISCORD_WEBHOOK não configurado. Vá em Settings → Secrets and variables → Actions e crie o secret com a URL do webhook (sem aspas)."
+            exit 1
+          fi
+
           PRS=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&per_page=20")
