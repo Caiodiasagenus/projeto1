@@ -17,4 +17,4 @@ jobs:
           -d "{
             \"content\":\"🚀 Novo Pull Request\n\n📦 Projeto: ${{ github.repository }}\n👤 Autor: ${{ github.actor }}\n🔗 ${{ github.event.pull_request.html_url }}\n\n👀 Precisa de aprovação\"
           }" \
-          ${{ secrets.DISCORD_WEBHOOK }}
+          ${{ https://discord.com/api/webhooks/1518689436978905118/HqpIrA6FoYtdIBjgNf-TdJYlGE20zC2aKlGhZWh92bIWqN5LXrxMqG4mXP4v_6l54hDk }}
